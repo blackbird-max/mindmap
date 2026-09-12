@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>나만의 마인드맵</title>
+    <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+    <script src="https://cdn.jsdelivr.net/npm/markmap-view"></script>
+    <script src="https://cdn.jsdelivr.net/npm/markmap-lib"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body, html { width: 100%; height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; overflow: hidden; }
+        .container { display: flex; flex-direction: column; height: 100vh; }
+        .tab-bar { display: flex; background: #2b2d42; color: #fff; }
+        .tab-btn { flex: 1; padding: 14px; border: none; background: transparent; color: #8d99ae; font-size: 1rem; font-weight: bold; cursor: pointer; }
+        .tab-btn.active { color: #fff; border-bottom: 3px solid #4895ef; background: #3d405b; }
+        .content { flex: 1; position: relative; overflow: hidden; }
+        .pane { width: 100%; height: 100%; display: none; }
+        .pane.active { display: flex; flex-direction: column; }
+        #editor-pane { padding: 15px; background-color: #f8f9fa; }
+        .guide-text { font-size: 0.85rem; color: #6c757d; margin-bottom: 10px; line-height: 1.4; }
+        textarea { flex: 1; width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 0.95rem; line-height: 1.5; resize: none; font-family: monospace; outline: none; }
+        .btn-box { display: flex; gap: 10px; margin-top: 10px; }
+        .btn { flex: 1; padding: 12px; border: none; border-radius: 8px; font-weight: bold; font-size: 0.95rem; cursor: pointer; }
+        .btn-primary { background: #4895ef; color: white; }
+        .btn-secondary { background: #e9ecef; color: #495057; }
+        #map-pane { background: #ffffff; }
+        svg { width: 100%; height: 100%; }
+        @media (min-width: 768px) {
+            .tab-bar { display: none; }
+            .container { flex-direction: row; }
+            .pane { display: flex !important; flex: 1; }
+            #editor-pane { max-width: 400px; border-right: 1px solid #dee2e6; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="tab-bar">
+            <button class="tab-btn active" onclick="switchTab('editor')">텍스트 편집</button>
+            <button class="tab-btn" onclick="switchTab('map')">마인드맵 보기</button>
+        </div>
+        <div id="editor-pane" class="pane active">
+            <div class="guide-text">
+                <b>작성 방법:</b><br>
+                • <code>#</code> : 중앙 주제<br>
+                • <code>-</code> : 가지 (들여쓰기는 스페이스바 2번)
+            </div>
+            <textarea id="markdown-input" placeholder="# 중앙 주제&#10;- 큰 가지 1&#10;  - 세부 항목 A&#10;  - 세부 항목 B&#10;- 큰 가지 2"></textarea>
+            <div class="btn-box">
+                <button class="btn btn-secondary" onclick="loadSample()">예시 불러오기</button>
+                <button class="btn btn-primary" onclick="generateMap()">마인드맵 생성</button>
+            </div>
+        </div>
+        <div id="map-pane" class="pane">
+            <svg id="markmap-svg"></svg>
+        </div>
+    </div>
+    <script>
+        const { Transformer, Markmap } = window.markmap;
+        const transformer = new Transformer();
+        let markmapInstance = null;
+        const sampleText = `# 나의 목표 정리\n- 자기계발\n  - 자격증 취득\n  - 독서 매월 2권\n- 건강 관리\n  - 주 3회 운동\n  - 수면 시간 확보\n- 취미 생활\n  - 음악 감상\n  - 게임`;
+        function generateMap() {
+            const text = document.getElementById('markdown-input').value || sampleText;
+            const { root } = transformer.transform(text);
+            const svg = document.querySelector('#markmap-svg');
+            svg.innerHTML = '';
+            markmapInstance = Markmap.create(svg, { duration: 200, zoom: true, pan: true }, root);
+            if (window.innerWidth < 768) switchTab('map');
+        }
+        function loadSample() {
+            document.getElementById('markdown-input').value = sampleText;
+            generateMap();
+        }
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.pane').forEach(pane => pane.classList.remove('active'));
+            if (tab === 'editor') {
+                document.querySelectorAll('.tab-btn')[0].classList.add('active');
+                document.getElementById('editor-pane').classList.add('active');
+            } else {
+                document.querySelectorAll('.tab-btn')[1].classList.add('active');
+                document.getElementById('map-pane').classList.add('active');
+                if (!markmapInstance) generateMap();
+            }
+        }
+        window.onload = () => loadSample();
+    </script>
+</body>
+</html>
