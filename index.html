@@ -5,12 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>실바 - 지식 나무</title>
     
-    <!-- 모바일 앱처럼 표시하는 설정 (웹앱 manifest 및 메타 태그) -->
+    <!-- PWA 및 앱 설치 모드 필수 설정 -->
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#111111">
-    <link rel="manifest" href="data:application/manifest+json,{%22name%22:%22%EC%A7%80%EC%8B%9C%20%EB%82%98%EB%AC%B4%22,%22short_name%22:%22%EC%A7%80%EC%8B%9C%EB%82%98%EB%AC%B4%22,%22start_url%22:%22.%22,%22display%22:%22standalone%22,%22background_color%22:%22#0d0d0d%22,%22theme_color%22:%22#111111%22}">
+    
+    <link rel="manifest" href="manifest.json">
 
     <!-- Markmap & D3 CDN -->
     <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
