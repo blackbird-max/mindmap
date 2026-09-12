@@ -3,94 +3,250 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>나만의 마인드맵</title>
+    <title>실바 스타일 지식 나무 마인드맵</title>
+    <!-- Markmap & D3 CDN -->
     <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
     <script src="https://cdn.jsdelivr.net/npm/markmap-view"></script>
     <script src="https://cdn.jsdelivr.net/npm/markmap-lib"></script>
     <style>
+        :root {
+            --bg-color: #121212;
+            --panel-bg: #1e1e1e;
+            --card-bg: #282828;
+            --border-color: #333333;
+            --text-primary: #e0e0e0;
+            --text-secondary: #9e9e9e;
+            --accent-color: #e6e6e6;
+            --button-bg: #2c2c2c;
+        }
+
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body, html { width: 100%; height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; overflow: hidden; }
-        .container { display: flex; flex-direction: column; height: 100vh; }
-        .tab-bar { display: flex; background: #2b2d42; color: #fff; }
-        .tab-btn { flex: 1; padding: 14px; border: none; background: transparent; color: #8d99ae; font-size: 1rem; font-weight: bold; cursor: pointer; }
-        .tab-btn.active { color: #fff; border-bottom: 3px solid #4895ef; background: #3d405b; }
-        .content { flex: 1; position: relative; overflow: hidden; }
-        .pane { width: 100%; height: 100%; display: none; }
-        .pane.active { display: flex; flex-direction: column; }
-        #editor-pane { padding: 15px; background-color: #f8f9fa; }
-        .guide-text { font-size: 0.85rem; color: #6c757d; margin-bottom: 10px; line-height: 1.4; }
-        textarea { flex: 1; width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 0.95rem; line-height: 1.5; resize: none; font-family: monospace; outline: none; }
-        
-        /* -------------------------------------------------- */
-        /* 아래 .btn-box 부분에 margin-bottom: 25px; 추가 */
-        /* -------------------------------------------------- */
-        .btn-box { display: flex; gap: 10px; margin-top: 10px; margin-bottom: 25px; }
-        
-        .btn { flex: 1; padding: 12px; border: none; border-radius: 8px; font-weight: bold; font-size: 0.95rem; cursor: pointer; }
-        .btn-primary { background: #4895ef; color: white; }
-        .btn-secondary { background: #e9ecef; color: #495057; }
-        #map-pane { background: #ffffff; }
+        body, html { width: 100%; height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: var(--bg-color); color: var(--text-primary); overflow: hidden; }
+
+        .app-container { display: flex; height: 100vh; width: 100vw; position: relative; }
+
+        /* 상단 네비게이션 헤더 */
+        .header { position: absolute; top: 0; left: 0; right: 0; height: 55px; background: rgba(18, 18, 18, 0.85); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; padding: 0 16px; z-index: 10; }
+        .header-title { font-size: 1.1rem; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+        .header-btns { display: flex; gap: 10px; }
+        .icon-btn { background: var(--button-bg); border: 1px solid var(--border-color); color: var(--text-primary); width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+
+        /* 메인 레이아웃 */
+        .main-content { flex: 1; height: 100%; display: flex; position: relative; pt: 55px; }
+
+        /* 마인드맵 영역 (그리드 배경) */
+        #map-container { flex: 1; height: 100%; background-color: var(--bg-color); background-image: radial-gradient(#2a2a2a 1px, transparent 1px); background-size: 20px 20px; position: relative; }
         svg { width: 100%; height: 100%; }
-        @media (min-width: 768px) {
-            .tab-bar { display: none; }
-            .container { flex-direction: row; }
-            .pane { display: flex !important; flex: 1; }
-            #editor-pane { max-width: 400px; border-right: 1px solid #dee2e6; }
+
+        /* 커스텀 markmap 다크 모드 스타일 노드 */
+        .markmap-node { cursor: pointer; }
+        .markmap-node rect { fill: var(--card-bg); stroke: var(--border-color); stroke-width: 1px; rx: 6px; }
+        .markmap-node text { fill: var(--text-primary) !important; font-size: 13px !important; }
+        .markmap-link { stroke: #444 !important; stroke-width: 1.5px !important; }
+
+        /* 왼쪽 편집/목록 사이드바 */
+        .sidebar { width: 340px; background: var(--panel-bg); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; padding: 65px 16px 16px 16px; transition: transform 0.3s ease; position: absolute; top: 0; bottom: 0; left: 0; z-index: 20; }
+        .sidebar.closed { transform: translateX(-100%); }
+        .search-box { background: #141414; border: 1px solid var(--border-color); border-radius: 8px; padding: 10px 12px; margin-bottom: 15px; color: var(--text-primary); width: 100%; outline: none; }
+        textarea { flex: 1; width: 100%; background: #141414; border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; color: var(--text-primary); font-family: monospace; resize: none; outline: none; line-height: 1.5; font-size: 0.9rem; }
+        .add-root-btn { margin-top: 12px; padding: 12px; background: var(--accent-color); color: #000; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; }
+
+        /* 하위 범주 모아보기 패널 (세 번째 이미지 스타일) */
+        .detail-panel { position: absolute; right: 0; top: 0; bottom: 0; width: 380px; background: var(--panel-bg); border-left: 1px solid var(--border-color); padding: 70px 20px 20px 20px; display: flex; flex-direction: column; z-index: 15; transform: translateX(100%); transition: transform 0.3s ease; overflow-y: auto; }
+        .detail-panel.active { transform: translateX(0); }
+        .detail-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .detail-title { font-size: 1.5rem; font-weight: 700; color: #fff; }
+        .detail-date { font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 15px; }
+        .detail-desc { font-size: 0.95rem; color: var(--text-primary); line-height: 1.6; margin-bottom: 25px; padding-bottom: 15px; border-bottom: 1px solid var(--border-color); }
+        .sub-notes-title { font-size: 0.9rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 12px; display: flex; justify-content: space-between; }
+        .sub-card-list { display: flex; flex-direction: column; gap: 10px; }
+        .sub-card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 10px; padding: 14px; cursor: pointer; transition: background 0.2s; }
+        .sub-card:hover { background: #333333; }
+        .sub-card-title { font-size: 1rem; font-weight: 600; margin-bottom: 6px; color: #fff; }
+        .sub-card-snippet { font-size: 0.85rem; color: var(--text-secondary); line-height: 1.4; }
+
+        /* 모바일 대응 스크린 쿼리 */
+        @media (max-width: 768px) {
+            .sidebar { width: 100%; }
+            .detail-panel { width: 100%; }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="tab-bar">
-            <button class="tab-btn active" onclick="switchTab('editor')">텍스트 편집</button>
-            <button class="tab-btn" onclick="switchTab('map')">마인드맵 보기</button>
-        </div>
-        <div id="editor-pane" class="pane active">
-            <div class="guide-text">
-                <b>작성 방법:</b><br>
-                • <code>#</code> : 중앙 주제<br>
-                • <code>-</code> : 가지 (들여쓰기는 스페이스바 2번)
+
+    <div class="app-container">
+        <!-- 상단 헤더 -->
+        <header class="header">
+            <div class="header-title">
+                <button class="icon-btn" onclick="toggleSidebar()">☰</button>
+                <span>지식 나무</span>
             </div>
-            <textarea id="markdown-input" placeholder="# 중앙 주제&#10;- 큰 가지 1&#10;  - 세부 항목 A&#10;  - 세부 항목 B&#10;- 큰 가지 2"></textarea>
-            <div class="btn-box">
-                <button class="btn btn-secondary" onclick="loadSample()">예시 불러오기</button>
-                <button class="btn btn-primary" onclick="generateMap()">마인드맵 생성</button>
+            <div class="header-btns">
+                <button class="icon-btn" onclick="renderMap()">🔄</button>
             </div>
-        </div>
-        <div id="map-pane" class="pane">
-            <svg id="markmap-svg"></svg>
+        </header>
+
+        <div class="main-content">
+            <!-- 좌측 편집/목록 사이드바 -->
+            <div class="sidebar" id="sidebar">
+                <input type="text" class="search-box" placeholder="나무에서 찾기..." onkeyup="searchNodes(this.value)">
+                <textarea id="markdown-input" placeholder="# 중앙 노드&#10;- 가지 1&#10;  - 세부 노트&#10;- 가지 2"></textarea>
+                <button class="add-root-btn" onclick="addRootNode()">+ 새 뿌리 노트</button>
+            </div>
+
+            <!-- 메인 마인드맵 영역 -->
+            <div id="map-container">
+                <svg id="markmap-svg"></svg>
+            </div>
+
+            <!-- 하위 범주 전용 모아보기 패널 (클릭 시 우측/전체에 표시) -->
+            <div class="detail-panel" id="detail-panel">
+                <div class="detail-header">
+                    <span class="detail-title" id="node-detail-title">철학</span>
+                    <button class="icon-btn" onclick="closeDetailPanel()">✕</button>
+                </div>
+                <div class="detail-date" id="node-detail-date">노트 · 상하관계가 곧 지도입니다</div>
+                <div class="detail-desc" id="node-detail-desc">
+                    선택한 범주의 설명 및 주요 개념입니다. 아래에서 직속 하위 항목들을 탐색할 수 있습니다.
+                </div>
+
+                <div class="sub-notes-title">
+                    <span>하위 노트</span>
+                    <span id="sub-notes-count">0개의 가지</span>
+                </div>
+
+                <div class="sub-card-list" id="sub-card-list">
+                    <!-- 하위 범주 노드 카드가 동적으로 생성됩니다 -->
+                </div>
+            </div>
         </div>
     </div>
+
     <script>
         const { Transformer, Markmap } = window.markmap;
         const transformer = new Transformer();
         let markmapInstance = null;
-        const sampleText = `# 나의 목표 정리\n- 자기계발\n  - 자격증 취득\n  - 독서 매월 2권\n- 건강 관리\n  - 주 3회 운동\n  - 수면 시간 확보\n- 취미 생활\n  - 음악 감상\n  - 게임`;
-        function generateMap() {
-            const text = document.getElementById('markdown-input').value || sampleText;
+        let currentRootNode = null;
+
+        // 샘플 데이터 (스크린샷 기반 작성)
+        const defaultMarkdown = `# 지식 나무
+- 실바에 오신 것을 환영합니다
+  - 노트는 페이지입니다
+  - 관계는 나무가 됩니다
+    - 상위와 하위
+    - 지식의 결
+  - 지도를 펼치세요
+- 탐험용 지식
+  - 철학
+    - 인식론
+      - 선험적 지식
+      - 실재론
+    - 윤리학
+      - 덕 윤리
+      - 직관주의
+  - 과학
+    - 물리학
+    - 생물학
+  - 언어와 삶
+    - 글쓰기
+    - 실재`;
+
+        function initMap() {
+            document.getElementById('markdown-input').value = defaultMarkdown;
+            renderMap();
+        }
+
+        function renderMap() {
+            const text = document.getElementById('markdown-input').value || defaultMarkdown;
             const { root } = transformer.transform(text);
+            currentRootNode = root;
+
             const svg = document.querySelector('#markmap-svg');
             svg.innerHTML = '';
-            markmapInstance = Markmap.create(svg, { duration: 200, zoom: true, pan: true }, root);
-            if (window.innerWidth < 768) switchTab('map');
+
+            markmapInstance = Markmap.create(svg, {
+                duration: 200,
+                zoom: true,
+                pan: true
+            }, root);
+
+            // 마인드맵 노드 클릭 이벤트 바인딩
+            setTimeout(() => {
+                d3.selectAll('.markmap-node').on('click', function(event, d) {
+                    event.stopPropagation();
+                    showDetailPanel(d.data);
+                });
+            }, 300);
         }
-        function loadSample() {
-            document.getElementById('markdown-input').value = sampleText;
-            generateMap();
-        }
-        function switchTab(tab) {
-            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-            document.querySelectorAll('.pane').forEach(pane => pane.classList.remove('active'));
-            if (tab === 'editor') {
-                document.querySelectorAll('.tab-btn')[0].classList.add('active');
-                document.getElementById('editor-pane').classList.add('active');
+
+        // 하위 범주 상세 모아보기 패널 표시
+        function showDetailPanel(nodeData) {
+            const panel = document.getElementById('detail-panel');
+            const titleEl = document.getElementById('node-detail-title');
+            const countEl = document.getElementById('sub-notes-count');
+            const cardListEl = document.getElementById('sub-card-list');
+
+            const title = nodeData.content.replace(/<[^>]*>?/gm, ''); // HTML 태그 제거
+            titleEl.innerText = title;
+
+            const children = nodeData.children || [];
+            countEl.innerText = `${children.length}개의 가지`;
+
+            cardListEl.innerHTML = '';
+
+            if (children.length === 0) {
+                cardListEl.innerHTML = '<div style="color: var(--text-secondary); font-size: 0.9rem;">하위 노트가 없습니다.</div>';
             } else {
-                document.querySelectorAll('.tab-btn')[1].classList.add('active');
-                document.getElementById('map-pane').classList.add('active');
-                if (!markmapInstance) generateMap();
+                children.forEach(child => {
+                    const childTitle = child.content.replace(/<[^>]*>?/gm, '');
+                    const grandChildren = child.children || [];
+                    const childDesc = grandChildren.length > 0 
+                        ? grandChildren.map(g => g.content.replace(/<[^>]*>?/gm, '')).join(', ')
+                        : '하위 내용이 없습니다.';
+
+                    const card = document.createElement('div');
+                    card.className = 'sub-card';
+                    card.innerHTML = `
+                        <div class="sub-card-title">${childTitle}</div>
+                        <div class="sub-card-snippet">${childDesc}</div>
+                    `;
+                    card.onclick = () => showDetailPanel(child);
+                    cardListEl.appendChild(card);
+                });
             }
+
+            panel.classList.add('active');
         }
-        window.onload = () => loadSample();
+
+        function closeDetailPanel() {
+            document.getElementById('detail-panel').classList.remove('active');
+        }
+
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('closed');
+        }
+
+        function addRootNode() {
+            const input = document.getElementById('markdown-input');
+            input.value += `\n- 새 뿌리 노트`;
+            renderMap();
+        }
+
+        function searchNodes(query) {
+            if(!query) return;
+            // 간단 검색 시 해당 텍스트를 포함하는 노드로 포커스
+            const nodes = d3.selectAll('.markmap-node');
+            nodes.each(function(d) {
+                if(d.data.content.includes(query)) {
+                    d3.select(this).select('rect').style('stroke', '#4895ef').style('stroke-width', '2px');
+                } else {
+                    d3.select(this).select('rect').style('stroke', 'var(--border-color)').style('stroke-width', '1px');
+                }
+            });
+        }
+
+        window.onload = initMap;
     </script>
 </body>
 </html>
+
